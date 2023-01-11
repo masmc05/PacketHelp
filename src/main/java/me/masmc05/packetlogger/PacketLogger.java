@@ -2,6 +2,7 @@ package me.masmc05.packetlogger;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.PropertyMap;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.Channel;
@@ -25,8 +26,6 @@ import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-
-import static net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket.Action.INITIALIZE_CHAT;
 
 public final class PacketLogger extends JavaPlugin {
     private final long offset;
@@ -56,15 +55,17 @@ public final class PacketLogger extends JavaPlugin {
     private final class Listener extends ChannelDuplexHandler {
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            if (msg instanceof ClientboundPlayerInfoUpdatePacket packet && packet.actions().contains(INITIALIZE_CHAT)) {
+            if (msg instanceof ClientboundPlayerInfoUpdatePacket packet && packet.actions().contains(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER)) {
                 var buf = new FriendlyByteBuf(UnpooledByteBufAllocator.DEFAULT.directBuffer());
                 var players = new LinkedList<ClientboundPlayerInfoUpdatePacket.Entry>();
                 for (var entry : packet.entries()){
                     try {
-                        buf.writeNullable(entry.chatSession(), RemoteChatSession.Data::write);
-                        buf.readNullable(RemoteChatSession.Data::read);
+                        buf.writeUtf(entry.profile().getName(), 16);
+                        buf.writeGameProfileProperties(entry.profile().getProperties());
+                        GameProfile gameProfile = new GameProfile(entry.profileId(), buf.readUtf(16));
+                        gameProfile.getProperties().putAll(buf.readGameProfileProperties());
                         players.add(entry);
-                    } catch (DecoderException e) {
+                    } catch (Throwable e) {
                         Bukkit.getScheduler().runTask(PacketLogger.this, () -> {
                             Player player = Bukkit.getPlayer(entry.profile().getId());
                             if (player == null) return;
