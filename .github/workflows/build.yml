@@ -17,6 +17,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
+      - run: chmod +x ./gradlew
       - uses: actions/cache@v2
         with:
           path: |
