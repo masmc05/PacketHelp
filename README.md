@@ -2,4 +2,4 @@
 
 ***This is not a fix, just make the effect less critical***
 
-we still need to find whi player's data is corrupted
+we still need to find why player's data is corrupted
